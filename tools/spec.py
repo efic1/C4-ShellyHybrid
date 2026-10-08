@@ -6,7 +6,7 @@ Static events (with pinned IDs) are used instead of runtime C4:AddEvent so drive
 Director round trips for events at load time.
 """
 
-VERSION = "20260930"
+VERSION = "20261008"
 CREATOR = "C4-ShellyHybrid"
 MANUFACTURER = "Shelly (cloud-provisioned, LAN-executed)"
 
