@@ -1,0 +1,3 @@
+# generated per-driver trees; the packaged .c4z files in build/ are committed
+build/*/
+__pycache__/

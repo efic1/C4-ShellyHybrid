@@ -1,0 +1,175 @@
+local H = require("tests.harness")
+local F = require("tests.fakes")
+local Registry = require("hub.registry")
+local Parse = require("hub.transport.parse")
+local test, eq, truthy, falsy = H.test, H.eq, H.truthy, H.falsy
+
+local function new()
+  local rt = F.new()
+  local ev = {}
+  local reg = Registry.new(rt, {
+    onChanged = function(k, s, conf) ev[#ev + 1] = { "changed", k, s.value, conf } end,
+    onOnline = function(id, o) ev[#ev + 1] = { "online", id, o } end,
+    onDisagree = function(k, want, got) ev[#ev + 1] = { "disagree", k, want, got } end,
+  })
+  return rt, reg, ev
+end
+local function dev(id, comps, online) return { id = id, online = online, components = comps, gen = "G2", model = "M", supported = true } end
+local SW = "d|switch|0"
+
+test("registry: unknown fields stay unknown - a named component with no state publishes nothing", function()
+  local rt, reg, ev = new()
+  reg:upsert(dev("d", { { kind = "switch", channel = 0 } }))
+  reg:applyRead("d", dev("d", { { kind = "switch", channel = 0, on = nil } }), "lan")
+  eq(#ev, 0); eq(reg:value(SW), nil)
+end)
+
+test("registry: ten identical polls publish exactly ONE change", function()
+  local rt, reg, ev = new()
+  reg:upsert(dev("d", { { kind = "switch", channel = 0 } }))
+  for _ = 1, 10 do reg:applyRead("d", dev("d", { { kind = "switch", channel = 0, on = true } }), "lan") end
+  eq(#ev, 1); eq(ev[1][3], { on = true })
+end)
+
+test("registry: a real change is published once; a change back is published again", function()
+  local rt, reg, ev = new()
+  reg:upsert(dev("d", { { kind = "light", channel = 0 } }))
+  local function read(on, lvl) reg:applyRead("d", dev("d", { { kind = "light", channel = 0, on = on, level = lvl } }), "lan") end
+  read(true, 50); read(true, 50); read(true, 80); read(false, 80)
+  eq(#ev, 3)
+end)
+
+test("registry: after a command, a stale POLL during the hold is ignored (no flip-flop)", function()
+  local rt, reg, ev = new()
+  reg:upsert(dev("d", { { kind = "switch", channel = 0 } }))
+  reg:applyRead("d", dev("d", { { kind = "switch", channel = 0, on = false } }), "lan")
+  reg:applyCommand(SW, { on = true }, 2000)
+  reg:applyRead("d", dev("d", { { kind = "switch", channel = 0, on = false } }), "lan")      -- stale poll
+  eq(reg:value(SW), { on = true })
+  eq(#ev, 1, "only the initial state was published")
+  rt.advance(2500)
+  reg:applyRead("d", dev("d", { { kind = "switch", channel = 0, on = false } }), "lan")      -- hold expired: believed
+  eq(reg:value(SW), { on = false })
+  eq(ev[#ev][4], true, "pending command is confirmed by the first believed read")
+end)
+
+test("registry: a VERIFY read overrides the hold and reports the disagreement", function()
+  local rt, reg, ev = new()
+  reg:upsert(dev("d", { { kind = "switch", channel = 0 } }))
+  reg:applyRead("d", dev("d", { { kind = "switch", channel = 0, on = false } }), "lan")
+  reg:applyCommand(SW, { on = true }, 2000)
+  reg:applyRead("d", dev("d", { { kind = "switch", channel = 0, on = false } }), "lan", { verify = true })
+  eq(reg:value(SW), { on = false })
+  local kinds = {}
+  for _, e in ipairs(ev) do kinds[#kinds + 1] = e[1] end
+  eq(kinds, { "changed", "disagree", "changed" })
+end)
+
+test("registry: a verify read that AGREES confirms the pending command exactly once", function()
+  local rt, reg, ev = new()
+  reg:upsert(dev("d", { { kind = "switch", channel = 0 } }))
+  reg:applyRead("d", dev("d", { { kind = "switch", channel = 0, on = false } }), "lan")
+  reg:applyCommand(SW, { on = true }, 2000)
+  reg:applyRead("d", dev("d", { { kind = "switch", channel = 0, on = true } }), "lan", { verify = true })
+  reg:applyRead("d", dev("d", { { kind = "switch", channel = 0, on = true } }), "lan")
+  eq(#ev, 2); eq(ev[2][4], true); eq(ev[2][3], { on = true })
+end)
+
+test("registry: light optimistic value keeps the previous brightness when turned off", function()
+  local rt, reg = new()
+  reg:upsert(dev("d", { { kind = "light", channel = 0 } }))
+  reg:applyRead("d", dev("d", { { kind = "light", channel = 0, on = true, level = 70 } }), "lan")
+  reg:applyCommand("d|light|0", { level = 0 }, 2000)
+  eq(reg:value("d|light|0"), { on = false, level = 70 })
+end)
+
+test("registry: device online transitions are reported once", function()
+  local rt, reg, ev = new()
+  reg:upsert(dev("d", {}, true))
+  reg:applyRead("d", dev("d", {}, true), "cloud")
+  reg:applyRead("d", dev("d", {}, false), "cloud")
+  reg:applyRead("d", dev("d", {}, false), "cloud")
+  eq(#ev, 1, "upsert(online=true) already recorded online; only the drop to offline is a transition, and only once")
+  eq(ev[1], { "online", "d", false })
+end)
+
+test("registry: metaOnly reads update online state but never touch values", function()
+  local rt, reg, ev = new()
+  reg:upsert(dev("d", { { kind = "switch", channel = 0 } }))
+  reg:applyRead("d", dev("d", { { kind = "switch", channel = 0, on = true } }, false), "cloud", { metaOnly = true })
+  eq(reg:value(SW), nil); eq(reg:device("d").online, false)
+end)
+
+test("registry: upsert reports new components; unsupported (Gen1) devices are excluded from 'unassigned'", function()
+  local rt, reg = new()
+  truthy(reg:upsert(dev("d", { { kind = "switch", channel = 0 }, { kind = "switch", channel = 1 } })))
+  falsy(reg:upsert(dev("d", { { kind = "switch", channel = 0 }, { kind = "switch", channel = 1 } })), "a repeat read adds nothing new")
+  reg:upsert({ id = "g1", supported = false, components = { { kind = "switch", channel = 0 } } })
+  local un = reg:unassigned()
+  eq(#un, 2); eq(un[1].key, "d|switch|0")
+  reg:bindChild("d|switch|0", 77)
+  eq(#reg:unassigned(), 1); eq(reg:childFor("d|switch|0"), 77)
+  eq(reg:unbindChild(77), "d|switch|0"); eq(reg:childFor("d|switch|0"), nil)
+end)
+
+test("registry: export/import round-trips inventory and child links, never state", function()
+  local rt, reg = new()
+  reg:upsert(dev("d", { { kind = "cover", channel = 0 }, { kind = "switch", channel = 1 } }))
+  reg:bindChild("d|cover|0", 55)
+  reg:applyRead("d", dev("d", { { kind = "switch", channel = 1, on = true } }), "lan")
+  local data = rt.json.decode(rt.json.encode(reg:export()))
+  local rt2, reg2 = new()
+  reg2:import(data)
+  eq(#reg2:componentsOf("d"), 2); eq(reg2:childFor("d|cover|0"), 55); eq(reg2:value("d|switch|1"), nil)
+end)
+
+test("registry: markMissing flags vanished devices without deleting them", function()
+  local rt, reg = new()
+  reg:upsert(dev("a", {})); reg:upsert(dev("b", {}))
+  reg:markMissing({ a = true })
+  eq(reg:device("b").missing, true); eq(reg:device("a").missing, nil)
+  reg:upsert(dev("b", {}))
+  eq(reg:device("b").missing, nil)
+end)
+
+test("registry: removeDevice drops its components, state and child links", function()
+  local rt, reg = new()
+  reg:upsert(dev("d", { { kind = "switch", channel = 0 } }))
+  reg:bindChild("d|switch|0", 9)
+  reg:applyRead("d", dev("d", { { kind = "switch", channel = 0, on = true } }), "lan")
+  reg:removeDevice("d")
+  eq(reg:device("d"), nil); eq(reg:component("d|switch|0"), nil); eq(reg.childOf[9], nil); eq(reg:value("d|switch|0"), nil)
+end)
+
+test("registry: components a full read no longer lists are marked GONE (profile changed) and never offered for Auto-Setup; they return if they reappear", function()
+  local rt, reg = new()
+  reg:upsert(dev("d", { { kind = "switch", channel = 0 }, { kind = "switch", channel = 1 } }))
+  eq(#reg:unassigned(), 2)
+  reg:upsert(dev("d", { { kind = "cover", channel = 0 } }))                 -- the device was switched to the cover profile
+  local un = reg:unassigned()
+  eq(#un, 1); eq(un[1].key, "d|cover|0")
+  truthy(reg:component("d|switch|0").gone)
+  reg:upsert(dev("d", { { kind = "switch", channel = 0 }, { kind = "switch", channel = 1 } }))
+  eq(#reg:unassigned(), 3 - 1 + 0 + 0, "switches are back; the cover is now the gone one")
+  falsy(reg:component("d|switch|0").gone); truthy(reg:component("d|cover|0").gone)
+end)
+
+test("registry: an EMPTY read (device offline in the cloud) never marks anything gone", function()
+  local rt, reg = new()
+  reg:upsert(dev("d", { { kind = "switch", channel = 0 } }))
+  reg:upsert({ id = "d", components = {}, unsupported = {} })
+  falsy(reg:component("d|switch|0").gone)
+  eq(#reg:unassigned(), 1)
+end)
+
+test("registry: flood and smoke components have a value and survive persistence (the compact format needs a letter for each kind)", function()
+  local rt, reg = new()
+  reg:upsert(dev("d", { { kind = "flood", channel = 0, alarm = false }, { kind = "smoke", channel = 1, alarm = true, mute = true } }))
+  reg:applyRead("d", dev("d", { { kind = "flood", channel = 0, alarm = true, mute = false }, { kind = "smoke", channel = 1, alarm = true, mute = true } }), "cloud")
+  eq(reg:value("d|flood|0"), { alarm = true, mute = false }); eq(reg:value("d|smoke|1"), { alarm = true, mute = true })
+  reg:bindChild("d|flood|0", 9); reg:bindChild("d|smoke|1", 10)
+  local rt2, reg2 = new()
+  reg2:import(reg:export())
+  eq(reg2:component("d|smoke|1").kind, "smoke"); eq(reg2:component("d|flood|0").kind, "flood")
+  eq(reg2:childFor("d|flood|0"), 9); eq(reg2:childFor("d|smoke|1"), 10)
+end)
