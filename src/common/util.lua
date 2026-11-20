@@ -24,13 +24,6 @@ function U.flat_eq(a, b)
   return true
 end
 
-function U.sorted_keys(t)
-  local keys = {}
-  for k in pairs(t) do keys[#keys + 1] = k end
-  table.sort(keys, function(a, b) return tostring(a) < tostring(b) end)
-  return keys
-end
-
 function U.clamp(n, lo, hi)
   if n < lo then return lo elseif n > hi then return hi end
   return n
@@ -56,12 +49,6 @@ function U.is_ipv4(s)
 end
 
 function U.escape_pattern(s) return (s:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")) end
-
-function U.split(s, sep)
-  local out, pat = {}, "([^" .. sep .. "]*)"
-  for piece in (s .. sep):gmatch(pat .. sep) do out[#out + 1] = piece end
-  return out
-end
 
 -- Device IDs come from the cloud as hex; normalise to lower-case without separators.
 function U.norm_id(id)

@@ -222,3 +222,15 @@ Fixed:
 
 Left as-is (judgement calls, see the review message): polling is the dominant controller cost; cloud reads rise while a device is down;
 follow-up reads after a pulse log up to 10 "could not verify" warnings if the device is offline.
+
+## Review: coverage and edge cases (2026-11-21)
+- Added `tests/cover.lua` (line coverage by debug hook; `COVER=1 lua5.1 tests/run_all.lua`). Baseline 96.2% of executable lines, now 98.7%.
+  What is left is log-only branches, a few defensive `pcall` fallbacks and `Core:destroy` flushing.
+- New tests: `test_router_paths.lua` (identity gate on probe, on feedback and on a password-protected stranger; rejected password; cloud
+  limits; STOP via cloud; slider throttling) and `test_edges.lua` (LAN redirect, 2xx error objects, 403/429/5xx classification, malformed
+  intents, cloud-queue cancel/start failure, glue command parsing for every driver, hub register refusals, Test Cloud/Test LAN, Clear
+  Authentication Stops, Poll Now, Refresh Addresses, takeover of a component by a second driver).
+- Bug found by this review: a cover command carrying neither an action nor a position raised an error inside the LAN client
+  (`U.round(nil)`). It is now refused as CONFIG (LAN and cloud). The sliders and the glue never send this, so it was latent.
+- Removed two unused helpers from `common/util.lua`.
+- Mutation checks run for the new tests; the takeover cleanup line (`pushed[other] = nil`) is memory hygiene only and has no observable effect.

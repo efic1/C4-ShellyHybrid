@@ -226,7 +226,8 @@ function Lan:set(d, kind, channel, intent, cb)
     if intent.cover == "open" then method, params = "Cover.Open", { id = channel }
     elseif intent.cover == "close" then method, params = "Cover.Close", { id = channel }
     elseif intent.cover == "stop" then method, params = "Cover.Stop", { id = channel }
-    else method, params = "Cover.GoToPosition", { id = channel, pos = U.clamp(U.round(intent.position), 0, 100) } end
+    elseif tonumber(intent.position) then method, params = "Cover.GoToPosition", { id = channel, pos = U.clamp(U.round(tonumber(intent.position)), 0, 100) }
+    else return cb(fail("CONFIG", "cover command needs an action or a position")) end
   else
     return cb(fail("CONFIG", "unsupported component " .. tostring(kind)))
   end

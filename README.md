@@ -42,7 +42,7 @@ wins. Everything the Director sees is de-duplicated and debounced.
 - `src/hub` - transports (`transport/`), address book, registry, router, feeds (`feed/`), core.
 - `src/light`, `src/light_onoff`, `src/relay`, `src/blind`, `src/sensor`, `src/contact` - proxy glue + entry points.
 - `tools/spec.py` - single source of truth (properties, events, actions, connections). `tools/build.py` - generator/bundler/packager.
-- `tests` - simulators (`lan_sim`, `cloud_sim`, `gen1_sim`), mock Director, 19 test files and a multi-hour soak (`tests/soak.lua`).
+- `tests` - simulators (`lan_sim`, `cloud_sim`, `gen1_sim`), mock Director, 21 test files, a line-coverage tool and a multi-hour soak (`tests/soak.lua`).
 - `docs` - installer guide, API notes, implementation notes, and the original SPEC / ARCHITECTURE.
 
 ## Build and test
@@ -53,6 +53,7 @@ Requires Python 3 and Lua 5.1 (`lua5.1`, `luac5.1`).
 ./build.sh                  # generate XML + ids, bundle, package, then run all tests
 python3 tools/build.py      # build only (writes build/*.c4z)
 lua5.1 tests/run_all.lua    # tests only (needs a prior build)
+COVER=1 lua5.1 tests/run_all.lua   # same, plus per-module line coverage (about 98.7%; uncovered lines are listed in tests/.cover/)
 lua5.1 tests/profile.lua    # Director-call profile
 lua5.1 tests/soak.lua 12 30 # 12 simulated hours, 30 misbehaving devices: memory, persist writes, logs, requests
 ```

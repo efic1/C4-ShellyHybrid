@@ -161,7 +161,8 @@ function Cloud.controlBody(kind, id, channel, intent)
     else b.on = intent.on and true or false end
   elseif kind == "cover" then
     if intent.cover then b.position = intent.cover      -- open | close | stop
-    else b.position = U.clamp(U.round(intent.position), 0, 100) end
+    elseif tonumber(intent.position) then b.position = U.clamp(U.round(tonumber(intent.position)), 0, 100)
+    else return nil, "cover command needs an action or a position" end
   end
   return b
 end
@@ -171,7 +172,8 @@ local PATH = { switch = "/v2/devices/api/set/switch", light = "/v2/devices/api/s
 -- prio is normally "control". cb(outcome)
 function Cloud:set(kind, id, channel, intent, prio, cb)
   if not self:isUsable() then return cb({ ok = false, class = "CONFIG", reason = "cloud not configured" }) end
-  local body = Cloud.controlBody(kind, id, channel, intent)
+  local body, why = Cloud.controlBody(kind, id, channel, intent)
+  if not body then return cb({ ok = false, class = "CONFIG", reason = why }) end
   local command = U.copy(body); command.id, command.channel = nil, nil
   local key = "set|" .. id .. "|" .. kind .. "|" .. channel .. "|" .. (intent.cover == "stop" and "stop" or "v")
   self.queue:enqueue({
