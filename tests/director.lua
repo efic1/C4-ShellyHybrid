@@ -51,6 +51,7 @@ function Director:makeC4(inst)
   local function count(name) inst.calls[name] = (inst.calls[name] or 0) + 1; inst.total = inst.total + 1 end
   function C4:GetTime() return f.clock.now() end
   function C4:GetDeviceID() return inst.id end
+  function C4:GetDeviceDisplayName(id) count("GetDeviceDisplayName"); local t = d.instances[id]; return t and t.name or nil end
   function C4:SetTimer(ms, cb, rep)
     count("SetTimer")
     inst.timers = inst.timers + 1

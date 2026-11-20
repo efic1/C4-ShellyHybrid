@@ -6,7 +6,7 @@ Static events (with pinned IDs) are used instead of runtime C4:AddEvent so drive
 Director round trips for events at load time.
 """
 
-VERSION = "20261008"
+VERSION = "20261119"
 CREATOR = "C4-ShellyHybrid"
 MANUFACTURER = "Shelly (cloud-provisioned, LAN-executed)"
 
@@ -38,6 +38,9 @@ HUB_EVENTS = [
     (201, "Cloud Lost", "When the Shelly cloud connection is lost"),
     (202, "Cloud Authentication Failed", "When the cloud rejects the authorization key"),
     (203, "Device Authentication Failed", "When a device rejects the device password"),
+    (204, "Critical Alarm Started", "When any water-leak, smoke or gas sensor reports an alarm (see the Alarm variables for what and where)"),
+    (205, "Critical Alarm Cleared", "When a water-leak, smoke or gas sensor reports that its alarm has cleared"),
+    (206, "All Critical Alarms Cleared", "When the last active water-leak, smoke or gas alarm has cleared"),
 ]
 
 # variables are created at runtime (C4:AddVariable); names are the contract, IDs are Director-assigned
@@ -45,6 +48,11 @@ CHILD_VARIABLES = [("Device Online", "BOOL"), ("Route", "STRING")]
 RELAY_VARIABLES = [("Relay State", "STRING")]
 CONTACT_VARIABLES = [("Contact State", "STRING"), ("Battery Level", "NUMBER")]
 SENSOR_VARIABLES = [("Alarm", "BOOL"), ("Muted", "BOOL"), ("Alarm Level", "STRING"), ("Battery Level", "NUMBER"), ("Sensor State", "STRING")]
+
+# Hub variables for the unified critical-alarm events (set BEFORE the event fires; see src/hub/alarms.lua)
+HUB_VARIABLES = [("Alarm Active", "BOOL"), ("Active Alarm Count", "NUMBER"), ("Alarm Type", "STRING"), ("Alarm Source", "STRING"),
+                 ("Alarm Source ID", "STRING"), ("Alarm Device ID", "NUMBER"), ("Alarm Message", "STRING"), ("Alarm Time", "STRING"),
+                 ("Active Alarms", "STRING")]
 
 # ---- protocol between hub and children --------------------------------------------------------------
 PROTOCOL = {
@@ -108,7 +116,7 @@ HUB_ACTIONS = [
     ("Auto-Setup Children", "AutoSetup"), ("Test LAN", "TestLan"), ("Poll Now", "PollNow"),
     ("Refresh Addresses", "RefreshAddresses"), ("List Devices", "ListDevices"),
     ("Show Recent Activity", "ShowActivity"), ("Clear Authentication Stops", "ClearAuthStops"),
-    ("Purge Missing Devices", "PurgeMissing"),
+    ("Purge Missing Devices", "PurgeMissing"), ("Send Test Alarm", "TestAlarm"),
 ]
 
 # Capabilities are the part of driver.xml that MUST be confirmed in Composer (milestone M0/M2).

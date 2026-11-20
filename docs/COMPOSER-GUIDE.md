@@ -147,6 +147,41 @@ How it behaves:
   so it can be used as a rain trigger.
 - The Gen1 Smoke wakes every 12 hours (documented), which is why *Device Offline* waits 25 hours for battery sensors.
 
+## Critical alarm notifications (one trigger for every sensor)
+
+Instead of programming each water, smoke and gas sensor separately, program the **Shelly Hub** once. It announces every alarm from every
+flood, smoke and gas sensor, with variables that say what happened and where.
+
+**Events (on the hub):** *Critical Alarm Started*, *Critical Alarm Cleared*, *All Critical Alarms Cleared* (when the last active alarm clears).
+
+**Variables (on the hub)**, set just before the event fires:
+
+| Variable | Example |
+|---|---|
+| Alarm Type | `Water leak`, `Smoke` or `Gas` |
+| Alarm Source | `Kitchen leak sensor` (the sensor driver's name in Composer; if it has no driver, `<model> <last 4 of id>`) |
+| Alarm Source ID | the Shelly device id |
+| Alarm Device ID | the Control4 device id of the sensor driver (0 if it has none) |
+| Alarm Message | `Water leak alarm detected: Kitchen leak sensor` (gas adds the level: `Gas alarm (heavy) detected: ...`; cleared events say `cleared`) |
+| Alarm Time | `2026-11-19 15:28:03` (controller time) |
+| Alarm Active | 1 while any alarm is active |
+| Active Alarm Count | how many alarms are active now |
+| Active Alarms | `Water leak: Kitchen leak sensor; Smoke: Hall smoke` |
+
+**Programming example:** *When Shelly Hub > Critical Alarm Started* -> send a push notification / email / announcement with the variable
+**Alarm Message**. Add *When Critical Alarm Cleared* for the all-clear message.
+
+**Test it:** run the hub action **Send Test Alarm**. It announces a made-up water leak ("TEST - ...") and clears it 6 seconds later. It does not
+change real alarm state or the active count.
+
+Behaviour to know:
+- Alarms that arrive together are announced one at a time, 1.5 seconds apart, so the variables always match the event being handled. *Active Alarms* lists
+  everything that is active.
+- An alarm stays active until the sensor itself reports all-clear. A sensor that is unreachable, asleep, or faulted never clears it.
+- After a controller restart, an alarm that is still active is announced again.
+- The per-sensor events (*Alarm Started* on the sensor driver) and its contact still work, and are the right choice for a security zone.
+- Like the sensors, this is a convenience, not a safety system: do not rely on it as the only way of learning about a leak, smoke or gas.
+
 ## Devices with profiles
 
 Some Shelly devices have a *profile* that decides which outputs they present. The profile is set in the Shelly app or the device's web UI,
@@ -203,10 +238,12 @@ four or more characters:
 - **Show Recent Activity** - prints the last log entries.
 - **Clear Authentication Stops** - lets the hub try the password again once per stopped device.
 - **Purge Missing Devices** - forgets devices removed from the cloud account that have no child driver.
+- **Send Test Alarm** - announces a made-up water-leak alarm (and clears it after 6 s) to test notification programming.
 
 ## Hub events
 
 - Cloud Connected, Cloud Lost (after 60 s), Cloud Authentication Failed, Device Authentication Failed.
+- Critical Alarm Started, Critical Alarm Cleared, All Critical Alarms Cleared (see *Critical alarm notifications*).
 
 ## Child drivers
 

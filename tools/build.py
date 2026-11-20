@@ -17,7 +17,7 @@ OUT = os.path.join(ROOT, "build")
 COMMON_MODS = ["common.util", "common.log", "common.setprop", "common.sched", "common.ids", "common.protocol", "common.runtime"]
 HUB_MODS = COMMON_MODS + ["common.persist", "hub.transport.parse", "hub.transport.cloudqueue", "hub.transport.cloud",
                           "hub.transport.lan_auth", "hub.transport.lan_gen1", "hub.transport.lan", "hub.transport.lan_dispatch",
-                          "hub.addressbook", "hub.registry", "hub.router", "hub.feed.lan_poll", "hub.feed.cloud_check", "hub.core"]
+                          "hub.addressbook", "hub.registry", "hub.router", "hub.feed.lan_poll", "hub.feed.cloud_check", "hub.alarms", "hub.core"]
 CHILD_MODS = COMMON_MODS + ["common.childcore"]
 
 
@@ -43,6 +43,8 @@ def gen_ids_lua():
     lines += ['    { name = "%s", type = "%s" },' % v for v in spec.RELAY_VARIABLES]
     lines += ["  },", "  contact = {"]
     lines += ['    { name = "%s", type = "%s" },' % v for v in spec.CONTACT_VARIABLES]
+    lines += ["  },", "  hub = {"]
+    lines += ['    { name = "%s", type = "%s" },' % v for v in spec.HUB_VARIABLES]
     lines += ["  },", "  sensor = {"]
     lines += ['    { name = "%s", type = "%s" },' % v for v in spec.SENSOR_VARIABLES]
     lines += ["  },", "}", ""]

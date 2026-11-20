@@ -343,7 +343,7 @@ end)
 test("hub_init_blocking_calls_within_budget (empty and restored 40-device state)", function()
   local dir = Director.new()
   local hub = dir:load("shelly_hub")
-  truthy(hub.total <= 12, "empty hub init: " .. hub.total)
+  truthy(hub.total <= 20, "empty hub init (8 + the 9 alarm variables): " .. hub.total)
   local P = require("tests.profile")
   local S = P.big(40); S.dir:advance(60000)
   local store = S.hub.store

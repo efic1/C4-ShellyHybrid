@@ -125,6 +125,12 @@ function R.env(c4, g, rt)
   env.prop = rt.prop
   env.setProp = function(name, value) return rt.props.set(name, value) end
   env.myId = function() return c4:GetDeviceID() end
+  -- [Unverified] C4:GetDeviceDisplayName(deviceId): the name the installer sees in Composer. Absent or failing => nil (callers fall back).
+  env.deviceName = function(id)
+    local ok, name = pcall(function() return c4:GetDeviceDisplayName(id) end)
+    if ok and type(name) == "string" and name ~= "" then return name end
+    return nil
+  end
   env.fire = function(name) safe(function() c4:FireEvent(name) end) end
   env.addVar = function(name, value, vtype) safe(function() c4:AddVariable(name, value, vtype) end) end
   env.setVar = function(name, value) safe(function() c4:SetVariable(name, value) end) end

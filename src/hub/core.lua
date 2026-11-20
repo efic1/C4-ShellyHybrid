@@ -22,6 +22,7 @@ local Registry = require("hub.registry")
 local Router = require("hub.router")
 local LanPoll = require("hub.feed.lan_poll")
 local CloudCheck = require("hub.feed.cloud_check")
+local Alarms = require("hub.alarms")
 
 local Core = {}
 Core.__index = Core
@@ -43,12 +44,13 @@ function Core.new(rt, env)
   self.dispatch = Dispatch.new(rt)
 
   self.registry = Registry.new(rt, {
-    onChanged = function(ckey) self:pushComponent(ckey) end,
+    onChanged = function(ckey) self:pushComponent(ckey); self.alarms:observe(ckey) end,
     onOnline = function(devId) self:pushDevice(devId) end,
     onDisagree = function(ckey, want, got)
       rt.log:warn("%s: device did not do what was asked (wanted %s, found %s)", ckey, rt.json.encode(want), rt.json.encode(got))
     end,
   })
+  self.alarms = Alarms.new(rt, env, { registry = self.registry, nameOf = env.deviceName })
   self.ab = AB.new(rt, {
     onDirty = function() self:markDirty() end,
     onTransition = function(id) self:pushDevice(id); self:scheduleStatus() end,
@@ -115,6 +117,7 @@ function Core:init()
     end
     rt.log:info("restored %d device(s) from the last session", self.ab:count())
   end
+  self.alarms:setup()
   self:configureCloud()
   self:refreshStatus()
 end
@@ -326,6 +329,8 @@ function Core:reportGaps(ids)
     end
   end
 end
+
+function Core:doTestAlarm() self.alarms:test() end
 
 function Core:doTestCloud()
   if not self:configureCloud() then return self.rt.log:error("Server / Authorization Key are not valid") end

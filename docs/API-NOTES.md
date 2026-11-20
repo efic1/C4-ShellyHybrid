@@ -276,6 +276,14 @@ a Gen1 2.5 in roller mode also reports `relays[]`).
 - Unverified: whether the cloud's Gen1 `status` for these devices equals `/status`; reed polarity on a real device (the "Invert Contact" property
   exists for that); the Gen2 `input` status on a Shelly 1 Gen4/Plus 1 on real firmware.
 
+## Critical alarm events (2026-11-19)
+
+- Hub events 204-206 and nine hub variables (`Alarm Type`, `Alarm Source`, ...); detection is in `src/hub/alarms.lua`, driven by the registry's
+  publish hook, so it does not depend on a sensor child existing.
+- Unverified: `C4:GetDeviceDisplayName(deviceId)` returns the name the installer sees in Composer (used for `Alarm Source`; failure falls back to
+  `<model> <last 4 of id>`). Unverified: Control4 programming sees variables set immediately before `C4:FireEvent` (the queue spaces announcements
+  1.5 s apart for the same reason, but the real Director's ordering has not been observed).
+
 ## Found wrong and fixed (2026-09-30)
 
 - A `Light.Set` starts a transition, and the status shows the moving level with the final one in `transition.target`.
