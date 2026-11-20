@@ -1,6 +1,6 @@
 # Shelly Hub for Control4 - Installer Guide
 
-The Shelly Hub sets up Shelly Gen2 and newer devices through the **Shelly cloud** (device list, names,
+The Shelly Hub sets up Shelly Gen2 and newer devices (and a few Gen1 devices) through the **Shelly cloud** (device list, names,
 addresses) and then controls them **locally over your LAN**. If a device cannot be reached locally, the hub
 falls back to the cloud. Feedback (wall switch, app, schedule changes) is read by polling.
 
@@ -14,9 +14,9 @@ Nothing here is a safety or security function. Do not use it to switch loads who
 - **Shelly Relay** - a `switch:N` channel exposed as a Control4 relay you bind a device to.
 - **Shelly Blind** - a `cover:N` channel (shutters, roller blinds, awnings).
 - **Shelly Contact Sensor** - a device's input terminal (a reed or limit switch, e.g. on a garage door) or a Shelly Door/Window sensor, shown as a Control4 contact sensor. Read-only.
-- **Shelly Alarm Sensor** - a `flood:N` (water leak) or `smoke:N` component, shown as a Control4 contact sensor. Read-only.
+- **Shelly Alarm Sensor** - a water-leak, smoke or gas sensor, shown as a Control4 contact sensor. Read-only.
 
-You normally only add the hub. Auto-Setup creates the rest. Of the Gen1 (original) Shelly devices only a few are supported - see *Gen1 devices* below.
+You normally only add the hub. Auto-Setup creates the rest. For leak, smoke and gas alarms the hub itself also offers one set of events and variables for all sensors - see *Critical alarm notifications*. Of the Gen1 (original) Shelly devices only a few are supported - see *Gen1 devices* below.
 
 ## Before you start
 
@@ -30,7 +30,7 @@ You normally only add the hub. Auto-Setup creates the rest. Of the Gen1 (origina
 
 ## Setup, step by step
 
-- Composer Pro: Driver > Add or Update Driver, select all five `.c4z` files.
+- Composer Pro: Driver > Add or Update Driver, select all seven `.c4z` files.
 - Add **Shelly Hub** to the project (any room).
 - Enter **Server** and **Authorization Key**. After a moment run **Test Cloud Connection**. The Lua output shows how many devices were found.
 - Set **Default Room ID** to the room number children should be created in (see the room's ID in Composer).
@@ -292,6 +292,9 @@ Behaviour to know:
 - **Test LAN: authentication rejected** - wrong Device Password. Fix it; the stop lifts automatically.
 - **Commands work but the UI lags** - feedback is polled. Lower LAN Poll Interval if the network allows it.
 - **Very large site** - raise LAN Poll Interval and check the Recent Activity property for warnings.
+- **Critical Alarm Started never fires** - run **Send Test Alarm** first: if that works, the programming is right and the sensor has not reported an alarm
+  (battery sensors report through the cloud about once a minute). If the test does not fire either, check the programming is on the **Shelly Hub**, not a sensor driver.
+- **Alarm Source shows a model and four characters instead of a name** - the sensor has no driver, or its name could not be read; rename the sensor driver in Composer.
 
 ## Limits
 
