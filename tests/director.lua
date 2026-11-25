@@ -75,7 +75,11 @@ function Director:makeC4(inst)
     if not inst.xml.events[name] then error("FireEvent for undeclared event '" .. tostring(name) .. "' in " .. inst.file, 2) end
     inst.fired[#inst.fired + 1] = name
   end
-  function C4:AddVariable(name, value, vtype) count("AddVariable"); inst.vars[name] = { value = value, type = vtype } end
+  function C4:AddVariable(name, value, vtype)
+    count("AddVariable")
+    if not inst.vars[name] then inst.varOrder[#inst.varOrder + 1] = name end   -- creation order, for the order-lock test
+    inst.vars[name] = { value = value, type = vtype }
+  end
   function C4:SetVariable(name, value)
     count("SetVariable")
     if not inst.vars[name] then error("SetVariable on undeclared variable '" .. tostring(name) .. "'", 2) end
@@ -143,7 +147,7 @@ function Director:load(file, opts)
   local id = self.nextId; self.nextId = id + 1
   local base = self.buildDir .. "/" .. file
   local inst = { id = id, file = file, name = opts.name, room = opts.room, calls = {}, total = 0, timers = 0,
-    fired = {}, notes = {}, sent = {}, vars = {}, out = {}, store = opts.store or {}, xml = parseXml(readfile(base .. "/driver.xml")) }
+    fired = {}, notes = {}, sent = {}, vars = {}, varOrder = {}, out = {}, store = opts.store or {}, xml = parseXml(readfile(base .. "/driver.xml")) }
   local env = setmetatable({}, { __index = _G })
   env.Properties = {}
   for name, p in pairs(inst.xml.props) do env.Properties[name] = p.default end

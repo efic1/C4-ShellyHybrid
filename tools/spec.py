@@ -44,6 +44,8 @@ HUB_EVENTS = [
 ]
 
 # variables are created at runtime (C4:AddVariable); names are the contract, IDs are Director-assigned
+# APPEND-ONLY: add new variables at the END of a list. Inserting, renaming, removing or reordering shifts the IDs that existing
+# Composer programming points at. tests/test_variable_order.lua pins the current order and fails on any such change.
 CHILD_VARIABLES = [("Device Online", "BOOL"), ("Route", "STRING")]
 RELAY_VARIABLES = [("Relay State", "STRING")]
 CONTACT_VARIABLES = [("Contact State", "STRING"), ("Battery Level", "NUMBER")]

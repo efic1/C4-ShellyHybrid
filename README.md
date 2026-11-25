@@ -42,7 +42,7 @@ wins. Everything the Director sees is de-duplicated and debounced.
 - `src/hub` - transports (`transport/`), address book, registry, router, feeds (`feed/`), core.
 - `src/light`, `src/light_onoff`, `src/relay`, `src/blind`, `src/sensor`, `src/contact` - proxy glue + entry points.
 - `tools/spec.py` - single source of truth (properties, events, actions, connections). `tools/build.py` - generator/bundler/packager.
-- `tests` - simulators (`lan_sim`, `cloud_sim`, `gen1_sim`), mock Director, 21 test files, a line-coverage tool and a multi-hour soak (`tests/soak.lua`).
+- `tests` - simulators (`lan_sim`, `cloud_sim`, `gen1_sim`), mock Director, 22 test files, a line-coverage tool and a multi-hour soak (`tests/soak.lua`).
 - `docs` - installer guide, API notes, implementation notes, and the original SPEC / ARCHITECTURE.
 
 ## Build and test

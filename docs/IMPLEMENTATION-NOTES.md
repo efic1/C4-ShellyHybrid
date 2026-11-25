@@ -234,3 +234,9 @@ follow-up reads after a pulse log up to 10 "could not verify" warnings if the de
   (`U.round(nil)`). It is now refused as CONFIG (LAN and cloud). The sliders and the glue never send this, so it was latent.
 - Removed two unused helpers from `common/util.lua`.
 - Mutation checks run for the new tests; the takeover cleanup line (`pushed[other] = nil`) is memory hygiene only and has no observable effect.
+
+### Variable order is locked (2026-11-25)
+Driver variables are append-only. `tests/test_variable_order.lua` pins the order of every variable group (`child`, `relay`, `contact`,
+`sensor`, `hub`) and their types, and checks that each built driver really creates them in that order (the mock Director records creation
+order). Adding a variable at the END of its list in `tools/spec.py` keeps the test green; inserting, renaming, removing or reordering one
+fails it with the position and the expected name. To pin a newly appended variable, add it to `PINNED` in the test as well.
